@@ -1,12 +1,8 @@
 const rp = require('request-promise')
 const cheerio = require('cheerio')
 const extend = require('extend')
-require('dotenv').load()
 
-// These are defined in .env (which is gitignored)
-const USERNAME = process.env.USERNAME
-const PASSWORD = process.env.PASSWORD
-const ACCOUNT_ID = process.env.ACCOUNT_ID
+require('dotenv').load()
 
 const LOGIN_URL = 'https://www2.mplsparking.com/secure/Login/Login.aspx'
 const PAY_URL = 'https://www2.mplsparking.com/secure/AdminWebUser/payment.aspx'
@@ -45,9 +41,9 @@ function authenticate (tokens) {
   console.log('Authenticating.')
   return new Promise((resolve, reject) => {
     let postArgs = {
-      'username': USERNAME,
-      'password': PASSWORD,
-      'account': ACCOUNT_ID,
+      'username': process.env.USERNAME,
+      'password': process.env.PASSWORD,
+      'account': process.env.ACCOUNT_ID,
       'Submit1': 'Login',
       '__EVENTTARGET': '',
       '__EVENTARGUMENT': ''
@@ -65,11 +61,9 @@ function authenticate (tokens) {
 
     rp(opts)
       .then((body) => {
-        console.log('Authentication successful.')
         return resolve()
       })
       .catch((e) => {
-        console.log('Authentication failed.')
         return reject()
       })
   })
@@ -90,7 +84,7 @@ function getPaymentPage () {
 
     rp(opts)
       .then((body) => {
-        console.log()
+        console.log('Retrieved payment page.')
       })
   })
 }
@@ -112,7 +106,7 @@ function choosePayFullAmount (tokens) {
     let opts = {
       'jar': j,
       'method': 'POST',
-      'uri': LOGIN_URL,
+      'uri': PAY_URL,
       'form': postArgs,
       'followAllRedirects': true,
       'transform': function (body) {
@@ -122,18 +116,84 @@ function choosePayFullAmount (tokens) {
 
     rp(opts)
       .then(($) => {
+        console.log('Loaded third-party form details.')
         let form = $('form#_xclick')
         let formAct = form.attr('action')
 
-        let formVals = {}
+        let formData = {}
+        // console.log('form', form, formAct)
         $(form).find('input').each((i, el) => {
-          console.log(i, el)
+          formData[$(el).attr('name')] = $(el).attr('value') || ''
         })
 
-      // console.log('body', body)
+        return resolve({'url': formAct, 'data': formData})
       })
       .catch((e) => {
-        console.log('err', e)
+        return reject(e)
+      })
+  })
+}
+
+function loadPaymentForm (formObj) {
+  return new Promise((resolve, reject) => {
+    console.log('Loading third-party payment form')
+
+    let opts = {
+      'jar': j,
+      'method': 'POST',
+      'uri': formObj.url,
+      'form': formObj.data,
+      'followAllRedirects': true,
+      'transform': function (body) {
+        return cheerio.load(body)
+      }
+    }
+
+    rp(opts)
+      .then(($) => {
+
+        return resolve({
+          'url': formObj.url,
+          'data': {
+            'XXX_IPG_XXX': 'confirm',
+            'XXX_IPGTRXNO_XXX': $('input[name="XXX_IPGTRXNO_XXX"]').attr('value'),
+            'XXX_IPGSESSION_XXX': $('input[name="XXX_IPGSESSION_XXX"]').attr('value'),
+            'card_pan': process.env.CREDIT_CARD_NUMBER,
+            'card_date_expiry_month': process.env.CREDIT_CARD_MONTH,
+            'card_date_expiry_year': process.env.CREDIT_CARD_YEAR,
+            'card_card_security_cvx_2': process.env.CREDIT_CARD_CVV,
+            'card_holder_address_postal_code': process.env.CREDIT_CARD_ZIP,
+            'buttonPay': 'Pay'
+          }
+        })
+      })
+      .catch((e) => {
+        return reject(e)
+      })
+  })
+}
+
+function submitPaymentForm (formObj) {
+  console.log('Submitting payment form.', formObj)
+  return new Promise((resolve, reject) => {
+    let opts = {
+      'jar': j,
+      'method': 'POST',
+      'uri': formObj.url,
+      'form': formObj.data,
+      'followAllRedirects': true,
+      'transform': function (body) {
+        return cheerio.load(body)
+      }
+    }
+
+    rp(opts)
+      .then(($) => {
+        console.log("Payment submitted.")
+        // TODO - Check for presence of error message in response.
+      })
+      .err((e) => {
+        return reject(e)
       })
   })
 }
@@ -142,11 +202,19 @@ getWebformsTokens(LOGIN_URL)
   .then((tokens) => {
     authenticate(tokens)
       .then(() => {
-        console.log('?')
-        getWebformsTokens(PAYMENT_URL)
+        console.log('Authentication successful.')
+        getWebformsTokens(PAY_URL)
           .then((tokens) => {
-            console.log('aa')
             choosePayFullAmount(tokens)
+              .then((formObj) => {
+                loadPaymentForm(formObj)
+                  .then((payFormObj) => {
+                    submitPaymentForm(payFormObj)
+                  })
+              })
           })
+      })
+      .catch((e) => {
+        console.log('Authentication error.', e)
       })
   })

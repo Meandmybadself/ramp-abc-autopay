@@ -4,7 +4,8 @@
   "description": "Automates payment to Ramp ABC",
   "main": "index.js",
   "scripts": {
-    "dev": "node --use_strict index.js",
+    "start": "node --use_strict index.js",
+    "dev": "nodemon --use_strict index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Jeffery Bennett <jeffery@permanentrecord.io>",
