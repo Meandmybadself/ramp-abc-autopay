@@ -1,12 +1,12 @@
 # ramp-abc-autopay
 
-Caveat: This is a work-in-progress.
+Caveat: This is a work-in-progress.  Your mileage may vary.
 
 ## Overview
-The online platform at Minneapolis's Ramp ABC is the worst.  The worst part being the lack of autopayment every month. Consider this a polyfill until they get their shit together.
+The online platform at Minneapolis's Ramp ABC is the worst.  The worst part being the lack of auto-payment. Consider this a polyfill until they get their shit together.
 
 ## .env file
-You'll need to create an .env file to define your personal account & payment details.  Make sure you don't commit it a public git repository.
+You'll need to create an .env file to define your personal account & payment details.  Make sure you don't commit it to a public git repository, cuz then people will steal your shit.
 
 ```
 USERNAME='XXXX@XXXX.XXX'

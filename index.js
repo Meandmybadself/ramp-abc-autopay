@@ -10,7 +10,7 @@ const PAY_URL = 'https://www2.mplsparking.com/secure/AdminWebUser/payment.aspx'
 let j = rp.jar()
 
 function getWebformsTokens (url) {
-  console.log('Fetching webforms tokens.')
+  console.log('1. Requesting login page and fetching webforms tokens.')
   return new Promise((resolve, reject) => {
     let opts = {
       'uri': url,
@@ -217,4 +217,6 @@ getWebformsTokens(LOGIN_URL)
       .catch((e) => {
         console.log('Authentication error.', e)
       })
+  }).catch((e) => {
+    console.log('Connection error', e)
   })
